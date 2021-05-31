@@ -12,6 +12,8 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
 
+    <script src="https://momentjs.com/downloads/moment.min.js"></script>
+
     <link
       rel="stylesheet"
       type="text/css"
@@ -72,7 +74,12 @@
               </select>
               <div></div>
               <div class="btn">
-                <button style="font-size: 20px" type="submit" id="filtro">
+                <button
+                  style="font-size: 20px"
+                  onclick="routes()"
+                  type="submit"
+                  id="filtro"
+                >
                   Aplicar
                 </button>
               </div>
