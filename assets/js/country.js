@@ -29,18 +29,42 @@ function updateCountries() {
 }
 
 async function countryAllStatus(country, from, to) {
+  from = moment(from, "yyyy-MM-DD")
+    .subtract(1, "days")
+    .format("yyyy-MM-DDTHH:mm:ss");
+
   const queryParams = `from=${from}&to=${to}`;
   const url = `${baseUrl}/country/${country}?${queryParams}`;
 
   const response = await fetch(url);
   const countryList = await response.json();
 
-  return countryList.reduce(
+  const data = countryList.map(
+    (country, index) => {
+      return {
+        confirmed:
+          country.Confirmed -
+          (index - 1 >= 0 ? countryList[index - 1].Confirmed : 0),
+        deaths:
+          country.Deaths - (index - 1 >= 0 ? countryList[index - 1].Deaths : 0),
+        recovered:
+          country.Recovered -
+          (index - 1 >= 0 ? countryList[index - 1].Recovered : 0),
+      };
+    },
+    {
+      confirmed: 0,
+      deaths: 0,
+      recovered: 0,
+    }
+  );
+
+  return data.slice(1).reduce(
     (sum, country) => {
       return {
-        confirmed: sum.confirmed + country.Confirmed,
-        deaths: sum.deaths + country.Deaths,
-        recovered: sum.recovered + country.Recovered,
+        confirmed: sum.confirmed + country.confirmed,
+        deaths: sum.deaths + country.deaths,
+        recovered: sum.recovered + country.recovered,
       };
     },
     {
@@ -52,33 +76,59 @@ async function countryAllStatus(country, from, to) {
 }
 
 async function graphic(from, to, country, status) {
-  from = moment(from, "yyyy-MM-dd")
+  console.log(status);
+  from = moment(from, "yyyy-MM-DD")
     .subtract(1, "days")
     .format("yyyy-MM-DDTHH:mm:ss");
-  console.log(from);
+
   const queryParams = `from=${from}&to=${to}`;
   const url = `${baseUrl}/country/${country}?${queryParams}`;
 
   const response = await fetch(url);
   const countryList = await response.json();
 
-  const dates = countryList.slice(0, 30).map((country) => {
+  const dates = countryList.slice(1, 31).map((country) => {
     return moment(new Date(country.Date)).format("yyyy-MM-DD");
   });
 
-  const quantities = countryList.slice(0, 30).map((country) => {
-    return country[status];
-  });
+  const quantities = countryList
+    .slice(0, 31)
+    .map((country, index) => {
+      if (index - 1 < 0) {
+        return country[status];
+      }
+
+      return country[status] - countryList[index - 1][status];
+    })
+    .slice(1, 31);
+
+  const avg =
+    quantities.reduce((sum, value) => sum + value, 0) / quantities.length;
+
+  const avgLines = Array(quantities.length).fill(avg);
+
+  const i18n = {
+    Confirmed: "Confirmados",
+    Deaths: "Mortes",
+    Recovered: "Recuperados",
+  };
 
   const options = {
     type: "line",
+    label: "terfytv",
     data: {
       labels: dates,
       datasets: [
         {
-          label: "Curva diária de Covid-19",
+          label: `Número diário de ${i18n[status]}`,
           data: quantities,
           backgroundColor: "#7209b7",
+          borderWidth: 1,
+        },
+        {
+          label: `Média de ${i18n[status]}`,
+          data: avgLines,
+          backgroundColor: "#7209",
           borderWidth: 1,
         },
       ],
@@ -92,11 +142,11 @@ async function graphic(from, to, country, status) {
     },
   };
 
-  if (!chart) {
-    chart = new Chart(lineChart, options);
-  } else {
-    chart.options = options;
+  if (chart) {
+    chart.destroy();
   }
+
+  chart = new Chart(lineChart, options);
 }
 
 async function routes() {
